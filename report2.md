@@ -155,6 +155,120 @@
   Decoding it from base64 using [https://www.base64decode.org/](https://www.base64decode.org/) we get `%63%30%6e%76%33%72%74%31%6e%67%5f%66%72%30%6d%5f%62%61%35%65%5f%36%34%5f%65%33%31%35%32%62%66%34`. This is an urlencoded string which if convert back we get `c0nv3rt1ng_fr0m_ba5e_64_e3152bf4`.
 
 - ## Vault Door 6
+  The code basically xors the ascii values of the input and compares them to the xor result of the actual password. Since xor-ing twice gts you the same number, we can do this on the expected array to get the flag.
+
+- ## asm1
+  The assembly code has a list of comparisons and sub/add operations most of which fail, resulting in just 0x2e0-0xa at the end which is 0x2d6
+
+- ## asm2
+  The code adds 0xd1 to the initial 1 unless it becomes 0x5fa1 and adds 1 to 0x2d every iteration of the loop. which results in 0xa3.
+
+- ## asm3
+  The code can be compiled alongside the following C code to get the output `0xC36B`
+  ```c
+  #include <stdio.h>
+
+  int asm3(int, int, int);
+  
+  int main(int argc, char* argv[])
+  {
+      printf("0x%x\n", asm3(0xd73346ed,0xd48672ae,0xd3c8b139));
+      return 0;
+  }
+  ```
+
+- ## asm4
+  The assembly code can be incorporated into C code and run which would result in `0x1d0`
+  ```c
+  #include <stdio.h>
+  #include <stdlib.h>
+  
+  int asm4(char* in)
+  {
+      int val;
+  
+      asm (
+          "nop;"
+          "nop;"
+          "nop;"
+          //"push   ebp;"
+          //"mov    ebp,esp;"
+          "push   ebx;"
+          "sub    esp,0x10;"
+          "mov    DWORD PTR [ebp-0x10],0x246;"
+          "mov    DWORD PTR [ebp-0xc],0x0;"
+          "jmp    _asm_27;"
+      "_asm_23:"
+          "add    DWORD PTR [ebp-0xc],0x1;"
+      "_asm_27:"
+          "mov    edx,DWORD PTR [ebp-0xc];"
+          "mov    eax,DWORD PTR [%[pInput]];"
+          "add    eax,edx;"
+          "movzx  eax,BYTE PTR [eax];"
+          "test   al,al;"
+          "jne    _asm_23;"
+          "mov    DWORD PTR [ebp-0x8],0x1;"
+          "jmp    _asm_138;"
+      "_asm_51:"
+          "mov    edx,DWORD PTR [ebp-0x8];"
+          "mov    eax,DWORD PTR [%[pInput]];"
+          "add    eax,edx;"
+          "movzx  eax,BYTE PTR [eax];"
+          "movsx  edx,al;"
+          "mov    eax,DWORD PTR [ebp-0x8];"
+          "lea    ecx,[eax-0x1];"
+          "mov    eax,DWORD PTR [%[pInput]];"
+          "add    eax,ecx;"
+          "movzx  eax,BYTE PTR [eax];"
+          "movsx  eax,al;"
+          "sub    edx,eax;"
+          "mov    eax,edx;"
+          "mov    edx,eax;"
+          "mov    eax,DWORD PTR [ebp-0x10];"
+          "lea    ebx,[edx+eax*1];"
+          "mov    eax,DWORD PTR [ebp-0x8];"
+          "lea    edx,[eax+0x1];"
+          "mov    eax,DWORD PTR [%[pInput]];"
+          "add    eax,edx;"
+          "movzx  eax,BYTE PTR [eax];"
+          "movsx  edx,al;"
+          "mov    ecx,DWORD PTR [ebp-0x8];"
+          "mov    eax,DWORD PTR [%[pInput]];"
+          "add    eax,ecx;"
+          "movzx  eax,BYTE PTR [eax];"
+          "movsx  eax,al;"
+          "sub    edx,eax;"
+          "mov    eax,edx;"
+          "add    eax,ebx;"
+          "mov    DWORD PTR [ebp-0x10],eax;"
+          "add    DWORD PTR [ebp-0x8],0x1;"
+      "_asm_138:"
+          "mov    eax,DWORD PTR [ebp-0xc];"
+          "sub    eax,0x1;"
+          "cmp    DWORD PTR [ebp-0x8],eax;"
+          "jl     _asm_51;"
+          "mov    eax,DWORD PTR [ebp-0x10];"
+          "add    esp,0x10;"
+          "pop    ebx;"
+          //"pop    ebp;"
+          //"ret    ;"
+          "nop;"
+          "nop;"
+          "nop;"
+              :"=r"(val)
+              : [pInput] "m"(in)
+      );
+      
+      return val;
+  }
+  
+  int main(int argc, char** argv)
+  {
+      printf("0x%x\n", asm4("picoCTF_a3112"));
+      
+      return 0;
+  }
+  ```
 
 - ## Vault Door 7
   The function takes the 8bit ascii value of every character and composes them together to form a 32bit number.
@@ -313,3 +427,33 @@
   ```
   Using this code we get ```s0m3_m0r3_b1t_sh1fTiNg_2e762b0ab```
 
+- ## Stonks
+  The input where the code asks for the API token directly prints the buffer entered by the user, this makes it vulnerable to leaking the stack when %x is entered, these hex values can be converted back to ascii and converted from little endian to big endian to get `picoCTF{I_l05t_4ll_my_m0n3y_c7cb6cae}`
+
+- ## Wireshark doo doo..
+  Analyzing the pcapng file provided we find the following header
+  ```
+  GET / HTTP/1.1
+  Host:  18.222.37.134
+  Accept:  text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+  Accept-Encoding:  gzip, deflate
+  Accept-Language:  en-US,en;q=0.9
+  Cache-Control:  max-age=0
+  Connection:  keep-alive
+  Upgrade-Insecure-Requests:  1
+  User-Agent:  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36
+  
+  HTTP/1.1 200 OK
+  Content-Length: 47
+  Accept-Ranges: bytes
+  Connection: Keep-Alive
+  Content-Type: text/html
+  Date:45 GMT
+  Etag: "2f-5ac3eea4fcf01"
+  Keep-Alive: timeout=5, max=100
+  Last-Modified:02 GMT
+  Server: Apache/2.4.29 (Ubuntu)
+  
+  Gur synt vf cvpbPGS{c33xno00_1_f33_h_qrnqorrs}
+  ```
+  The line `Gur synt vf cvpbPGS{c33xno00_1_f33_h_qrnqorrs}` is interesting. It appears to be a ROT cipher, analyzing it more we get that its a rot13 cipher. Decoding it we get ```The flag is picoCTF{p33kab00_1_s33_u_deadbeef}```.
